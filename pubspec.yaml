@@ -32,7 +32,7 @@ dependencies:
     sdk: flutter
   camera: ^0.11.0 # Para captura de vídeo/frames
   http: ^1.2.0 # Para enviar dados para a FastAPI
-  path_provider: ^2.1.0 # Para gerir ficheiros temporários
+  path_provider: ^2.1.0 # Para salvar o vídeo de captura no armazenamento do app
   permission_handler: ^11.0.0 # Para gerir permissões de câmara
 
   # The following adds the Cupertino Icons font to your application.
