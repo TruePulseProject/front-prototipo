@@ -133,7 +133,7 @@ class _HeartRateMonitorState extends State<HeartRateMonitor>
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        widget.active ? "AO VIVO" : "MOCK",
+                        widget.active ? "AO VIVO" : "SIMULADO",
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,

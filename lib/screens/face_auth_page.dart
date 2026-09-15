@@ -1,18 +1,15 @@
-import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 
 import '../models/auth_stage.dart';
+import '../services/auth_api_service.dart';
 import '../services/video_capture_service.dart';
 import '../widgets/camera_preview_area.dart';
 import '../widgets/header.dart';
-import '../widgets/heart_rate_monitor.dart';
 import '../widgets/status_banner.dart';
 
 /// Tela principal de verificação facial: exibe a pré-visualização da
-/// câmera, o monitor de batimentos (mock) e conduz o fluxo de captura
-/// de um vídeo curto usado como prova de vida.
+/// câmera e conduz o fluxo de captura e verificação do vídeo pela API.
 class FaceAuthPage extends StatefulWidget {
   final CameraDescription? camera;
 
@@ -28,14 +25,8 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
   AuthStage _stage = AuthStage.idle;
 
   final VideoCaptureService _videoCaptureService = VideoCaptureService();
+  final AuthApiService _authApiService = AuthApiService();
   String? _lastVideoPath;
-
-  // Mock de batimentos cardíacos (será substituído pela resposta da API)
-  final Random _random = Random();
-  Timer? _bpmTimer;
-  int _bpm = 72;
-  static const int _historyLength = 40;
-  final List<int> _bpmHistory = List<int>.filled(_historyLength, 72);
 
   @override
   void initState() {
@@ -49,28 +40,12 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
       );
       _initializeControllerFuture = _controller!.initialize();
     }
-
-    _startBpmMock();
-  }
-
-  void _startBpmMock() {
-    _bpmTimer = Timer.periodic(const Duration(milliseconds: 850), (_) {
-      if (!mounted) return;
-      setState(() {
-        // Em repouso: ~70 bpm. Durante captura/análise: sobe para ~95 bpm.
-        final base = _isProcessing ? 95 : 72;
-        final next = (base + _random.nextInt(9) - 4).clamp(50, 130);
-        _bpm = next;
-        _bpmHistory.removeAt(0);
-        _bpmHistory.add(next);
-      });
-    });
   }
 
   @override
   void dispose() {
-    _bpmTimer?.cancel();
     _controller?.dispose();
+    _authApiService.dispose();
     super.dispose();
   }
 
@@ -99,16 +74,27 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
 
       if (!mounted) return;
       setState(() => _stage = AuthStage.analyzing);
-      await Future.delayed(const Duration(milliseconds: 1500));
+      final verification = await _authApiService.authenticate(
+        result.sourceFile,
+      );
       if (!mounted) return;
-      _showResult(true);
+      _showResult(
+        verification.status == 'approved',
+        message: verification.message,
+      );
     } catch (e) {
-      _showResult(false, message: "Erro ao processar a autenticação: $e");
+      if (!mounted) return;
+      _showResult(false, message: _userFacingError(e));
     } finally {
       if (mounted) {
         setState(() => _stage = AuthStage.idle);
       }
     }
+  }
+
+  String _userFacingError(Object error) {
+    if (error is AuthenticationApiException) return error.message;
+    return "Não foi possível comunicar com a API de autenticação.";
   }
 
   void _showResult(bool success, {String? message}) {
@@ -136,7 +122,7 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
           children: [
             Text(
               success
-                  ? "Prova de vida validada com sucesso pelo TruePulse."
+                  ? "Prova de vida validada com sucesso pela API do TruePulse."
                   : (message ??
                         "Não foi possível confirmar a autenticidade biológica."),
               textAlign: TextAlign.center,
@@ -243,12 +229,6 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    HeartRateMonitor(
-                      bpm: _bpm,
-                      history: _bpmHistory,
-                      active: _isProcessing,
-                    ),
-                    const SizedBox(height: 20),
                     const Header(
                       title: "Verificação facial",
                       subtitle:

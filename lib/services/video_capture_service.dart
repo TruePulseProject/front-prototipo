@@ -8,15 +8,20 @@ import 'package:path_provider/path_provider.dart';
 class VideoCaptureResult {
   final String filePath;
   final Duration duration;
+  final XFile sourceFile;
 
-  const VideoCaptureResult({required this.filePath, required this.duration});
+  const VideoCaptureResult({
+    required this.filePath,
+    required this.duration,
+    required this.sourceFile,
+  });
 }
 
 /// Serviço responsável por gravar um vídeo curto (sem áudio) usando a
 /// câmera já inicializada e salvá-lo no diretório de documentos do app.
 ///
-/// Este vídeo é a base para a futura verificação de prova de vida:
-/// mais adiante ele poderá ser enviado à API do TruePulse para análise.
+/// O arquivo capturado também é mantido como [sourceFile] para ser enviado
+/// à API do TruePulse sem depender do caminho local da plataforma.
 class VideoCaptureService {
   static const Duration defaultDuration = Duration(seconds: 5);
 
@@ -39,7 +44,11 @@ class VideoCaptureService {
     final XFile rawFile = await controller.stopVideoRecording();
 
     final savedPath = await _saveToAppStorage(rawFile);
-    return VideoCaptureResult(filePath: savedPath, duration: duration);
+    return VideoCaptureResult(
+      filePath: savedPath,
+      duration: duration,
+      sourceFile: rawFile,
+    );
   }
 
   /// Copia o vídeo temporário gerado pela câmera para um arquivo
