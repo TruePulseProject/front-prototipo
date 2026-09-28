@@ -121,10 +121,7 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              message ?? "",
-              textAlign: TextAlign.center,
-            ),
+            Text(message ?? "", textAlign: TextAlign.center),
             if (code != null && code.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
