@@ -28,8 +28,9 @@ Aplicativo Flutter de captura de prova de vida integrado à API FastAPI em
 
 Após a captura, o front envia o vídeo como `multipart/form-data` para
 `POST /auth/login` e consulta `GET /auth/result/{job_id}` a cada segundo até
-o processamento terminar. Os estados `approved`, `rejected` e `error` são
-refletidos no diálogo final.
+o processamento terminar. O front respeita os estados retornados pela API
+(`processando`, `concluido`, `falhou`) e exibe a mensagem retornada no campo
+`resultado.mensagem` (ou `erro` em caso de falha).
 
 ## Getting Started
 

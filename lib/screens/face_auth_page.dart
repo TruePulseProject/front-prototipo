@@ -79,8 +79,9 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
       );
       if (!mounted) return;
       _showResult(
-        verification.status == 'approved',
-        message: verification.message,
+        verification.isApproved,
+        message: verification.apiMessage,
+        code: verification.payload?.code ?? verification.errorCode,
       );
     } catch (e) {
       if (!mounted) return;
@@ -97,7 +98,7 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
     return "Não foi possível comunicar com a API de autenticação.";
   }
 
-  void _showResult(bool success, {String? message}) {
+  void _showResult(bool success, {String? message, String? code}) {
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
@@ -116,17 +117,26 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
             size: 40,
           ),
         ),
-        title: Text(success ? "Acesso autorizado" : "Acesso negado"),
+        title: Text(success ? "Acesso autorizado" : "Resultado da verificação"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              success
-                  ? "Prova de vida validada com sucesso pela API do TruePulse."
-                  : (message ??
-                        "Não foi possível confirmar a autenticidade biológica."),
+              message ?? "",
               textAlign: TextAlign.center,
             ),
+            if (code != null && code.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                "Código: $code",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
             if (success && _lastVideoPath != null) ...[
               const SizedBox(height: 12),
               Text(

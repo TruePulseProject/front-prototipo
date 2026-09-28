@@ -15,28 +15,81 @@ class AuthenticationApiException implements Exception {
   String toString() => message;
 }
 
-class VerificationResult {
-  final String status;
-  final bool? isDeepfake;
-  final bool? isCorrectPerson;
-  final double? confidence;
-  final String? message;
+class VerificationPayload {
+  final bool approved;
+  final String verdict;
+  final String code;
+  final String message;
+  final Map<String, dynamic>? ai;
+  final Map<String, dynamic>? quality;
+  final Map<String, dynamic>? sync;
+  final String? accessToken;
+  final int? tokenExpiresInSeconds;
 
-  const VerificationResult({
-    required this.status,
-    this.isDeepfake,
-    this.isCorrectPerson,
-    this.confidence,
-    this.message,
+  const VerificationPayload({
+    required this.approved,
+    required this.verdict,
+    required this.code,
+    required this.message,
+    this.ai,
+    this.quality,
+    this.sync,
+    this.accessToken,
+    this.tokenExpiresInSeconds,
   });
 
+  factory VerificationPayload.fromJson(Map<String, dynamic> json) {
+    return VerificationPayload(
+      approved: json['aprovado'] as bool? ?? false,
+      verdict: json['veredicto'] as String? ?? 'inconclusivo',
+      code: json['codigo'] as String? ?? 'SEM_CODIGO',
+      message: json['mensagem'] as String? ?? '',
+      ai: json['ia'] as Map<String, dynamic>?,
+      quality: json['qualidade'] as Map<String, dynamic>?,
+      sync: json['sincronia'] as Map<String, dynamic>?,
+      accessToken: json['access_token'] as String?,
+      tokenExpiresInSeconds: json['token_expira_em_s'] as int?,
+    );
+  }
+}
+
+class VerificationResult {
+  final String jobId;
+  final String status;
+  final String stage;
+  final double elapsedSeconds;
+  final VerificationPayload? payload;
+  final String? error;
+  final String? errorCode;
+
+  const VerificationResult({
+    required this.jobId,
+    required this.status,
+    required this.stage,
+    required this.elapsedSeconds,
+    this.payload,
+    this.error,
+    this.errorCode,
+  });
+
+  bool get isProcessing => status == 'processando';
+
+  bool get isApproved => status == 'concluido' && (payload?.approved ?? false);
+
+  String? get apiMessage => payload?.message ?? error;
+
   factory VerificationResult.fromJson(Map<String, dynamic> json) {
+    final payloadJson = json['resultado'];
     return VerificationResult(
-      status: json['status'] as String? ?? 'error',
-      isDeepfake: json['is_deepfake'] as bool?,
-      isCorrectPerson: json['is_correct_person'] as bool?,
-      confidence: (json['confidence'] as num?)?.toDouble(),
-      message: json['message'] as String?,
+      jobId: json['job_id'] as String? ?? '',
+      status: json['status'] as String? ?? 'falhou',
+      stage: json['etapa'] as String? ?? 'desconhecida',
+      elapsedSeconds: (json['decorrido_s'] as num?)?.toDouble() ?? 0,
+      payload: payloadJson is Map<String, dynamic>
+          ? VerificationPayload.fromJson(payloadJson)
+          : null,
+      error: json['erro'] as String?,
+      errorCode: json['erro_codigo'] as String?,
     );
   }
 }
@@ -69,7 +122,7 @@ class AuthApiService {
 
     while (DateTime.now().isBefore(deadline)) {
       final result = await _getResult(jobId);
-      if (result.status != 'processing') return result;
+      if (!result.isProcessing) return result;
       await Future<void>.delayed(_pollInterval);
     }
 
