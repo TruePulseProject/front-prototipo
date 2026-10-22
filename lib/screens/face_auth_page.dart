@@ -26,7 +26,6 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
 
   final VideoCaptureService _videoCaptureService = VideoCaptureService();
   final AuthApiService _authApiService = AuthApiService();
-  String? _lastVideoPath;
 
   @override
   void initState() {
@@ -67,16 +66,15 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
 
     setState(() => _stage = AuthStage.scanning);
 
+    XFile? capturedFile;
     try {
       await _initializeControllerFuture;
       final result = await _videoCaptureService.recordVideo(_controller!);
-      _lastVideoPath = result.filePath;
+      capturedFile = result.sourceFile;
 
       if (!mounted) return;
       setState(() => _stage = AuthStage.analyzing);
-      final verification = await _authApiService.authenticate(
-        result.sourceFile,
-      );
+      final verification = await _authApiService.authenticate(capturedFile);
       if (!mounted) return;
       _showResult(
         verification.isApproved,
@@ -87,6 +85,9 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
       if (!mounted) return;
       _showResult(false, message: _userFacingError(e));
     } finally {
+      if (capturedFile != null) {
+        await _videoCaptureService.discard(capturedFile);
+      }
       if (mounted) {
         setState(() => _stage = AuthStage.idle);
       }
@@ -132,26 +133,6 @@ class _FaceAuthPageState extends State<FaceAuthPage> {
                   color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
-              ),
-            ],
-            if (success && _lastVideoPath != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                "Vídeo salvo em:",
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 4),
-              SelectableText(
-                _lastVideoPath!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: colorScheme.onSurfaceVariant,
-                ),
               ),
             ],
           ],
